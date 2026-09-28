@@ -141,3 +141,12 @@ func (s *TelegoTestSuite) TestCapturesApplicationRequestAndExcludesDashboard() {
 	s.Require().NoError(facades.Telemetry().ForceFlush(context.Background()))
 	s.Len(telego.DefaultStore().List(telego.Filters{Type: "request", Limit: 10}), 1)
 }
+
+func (s *TelegoTestSuite) TestFaviconDoesNotGeneratePanic() {
+	response, err := s.Http(s.T()).Get("/favicon.ico")
+
+	s.Require().NoError(err)
+	response.AssertNoContent()
+	s.Require().NoError(facades.Telemetry().ForceFlush(context.Background()))
+	s.Empty(telego.DefaultStore().List(telego.Filters{Type: "log", Limit: 10}))
+}

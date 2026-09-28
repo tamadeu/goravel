@@ -19,6 +19,9 @@ func Web() {
 
 	userController := controllers.NewUserController()
 	facades.Route().Get("/users", userController.Index)
+	facades.Route().Get("/favicon.ico", func(ctx http.Context) http.Response {
+		return ctx.Response().NoContent()
+	})
 
 	Telego()
 }
