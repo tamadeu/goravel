@@ -54,6 +54,8 @@ func init() {
 		// and a "stripe" client with a longer timeout.
 		"clients": map[string]any{
 			"default": map[string]any{
+				// Enable OpenTelemetry instrumentation for outgoing requests.
+				"enable_telemetry": config.EnvBool("HTTP_CLIENT_ENABLE_TELEMETRY", true),
 				// The base URL for the client. All requests made using this client
 				// will be relative to this URL.
 				"base_url": config.Env("HTTP_CLIENT_BASE_URL", ""),

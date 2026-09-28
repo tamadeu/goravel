@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>{{ .title }} - Telego</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/telego/assets/telego.css">
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="/telego/assets/telego.js" defer></script>
+</head>
+<body data-view="list" data-type="{{ .type }}" data-category="{{ .category }}">
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Entry types">
+            <a class="brand" href="/telego/requests">
+                <span class="brand-mark"><i data-lucide="scan-search"></i></span>
+                <span>Telego</span>
+            </a>
+
+            <nav class="nav-list">
+                <a class="nav-item {{if eq .category "requests"}}is-active{{end}}" href="/telego/requests"><i data-lucide="arrow-left-right"></i><span>Requests</span><output data-count="request">0</output></a>
+                <a class="nav-item {{if eq .category "exceptions"}}is-active{{end}}" href="/telego/exceptions"><i data-lucide="circle-alert"></i><span>Exceptions</span><output data-count="exception">0</output></a>
+                <a class="nav-item {{if eq .category "queries"}}is-active{{end}}" href="/telego/queries"><i data-lucide="database"></i><span>Queries</span><output data-count="query">0</output></a>
+                <a class="nav-item {{if eq .category "http-client"}}is-active{{end}}" href="/telego/http-client"><i data-lucide="globe-2"></i><span>HTTP Client</span><output data-count="http">0</output></a>
+                <a class="nav-item {{if eq .category "cache"}}is-active{{end}}" href="/telego/cache"><i data-lucide="archive"></i><span>Cache</span><output data-count="cache">0</output></a>
+                <a class="nav-item {{if eq .category "events"}}is-active{{end}}" href="/telego/events"><i data-lucide="radio"></i><span>Events</span><output data-count="event">0</output></a>
+                <a class="nav-item {{if eq .category "logs"}}is-active{{end}}" href="/telego/logs"><i data-lucide="file-text"></i><span>Logs</span><output data-count="log">0</output></a>
+                <a class="nav-item {{if eq .category "traces"}}is-active{{end}}" href="/telego/traces"><i data-lucide="waypoints"></i><span>Traces</span><output data-count="trace">0</output></a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <span class="status-dot" id="connection-dot"></span>
+                <span id="connection-label">Connecting</span>
+                <strong data-count="all">0</strong>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar">
+                <div><p class="eyebrow">Observability</p><h1>{{ .title }}</h1></div>
+                <div class="toolbar">
+					{{if eq .category "http-client"}}<a class="command-button" href="/telego/http-client/test"><i data-lucide="send"></i><span>New request</span></a>{{end}}
+                    <button class="icon-button" id="pause-button" type="button" title="Pause recording" aria-label="Pause recording"><i data-lucide="pause"></i></button>
+                    <button class="icon-button" id="clear-button" type="button" title="Clear entries" aria-label="Clear entries"><i data-lucide="trash-2"></i></button>
+                    <button class="icon-button" id="refresh-button" type="button" title="Refresh entries" aria-label="Refresh entries"><i data-lucide="refresh-cw"></i></button>
+                </div>
+            </header>
+
+            <section class="content-band">
+                <div class="list-header">
+                    <div class="summary"><strong id="visible-count">0</strong><span>entries</span></div>
+                    <label class="search-field">
+                        <i data-lucide="search"></i><span class="sr-only">Search entries</span>
+                        <input id="search-input" type="search" placeholder="Search name, URI, trace ID" autocomplete="off">
+                    </label>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Method</th><th>Name</th><th>Status</th><th>Duration</th><th>Happened</th><th><span class="sr-only">Open</span></th></tr></thead>
+                        <tbody id="entry-list"></tbody>
+                    </table>
+                    <div class="empty-state" id="empty-state" hidden><i data-lucide="inbox"></i><strong>No entries found</strong></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

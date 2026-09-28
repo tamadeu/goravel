@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>HTTP Client Lab - Telego</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/telego/assets/telego.css">
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="/telego/assets/telego-http-client.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Entry types">
+            <a class="brand" href="/telego/requests"><span class="brand-mark"><i data-lucide="scan-search"></i></span><span>Telego</span></a>
+            <nav class="nav-list">
+                <a class="nav-item" href="/telego/requests"><i data-lucide="arrow-left-right"></i><span>Requests</span><output data-count="request">0</output></a>
+                <a class="nav-item" href="/telego/exceptions"><i data-lucide="circle-alert"></i><span>Exceptions</span><output data-count="exception">0</output></a>
+                <a class="nav-item" href="/telego/queries"><i data-lucide="database"></i><span>Queries</span><output data-count="query">0</output></a>
+                <a class="nav-item is-active" href="/telego/http-client"><i data-lucide="globe-2"></i><span>HTTP Client</span><output data-count="http">0</output></a>
+                <a class="nav-item" href="/telego/cache"><i data-lucide="archive"></i><span>Cache</span><output data-count="cache">0</output></a>
+                <a class="nav-item" href="/telego/events"><i data-lucide="radio"></i><span>Events</span><output data-count="event">0</output></a>
+                <a class="nav-item" href="/telego/logs"><i data-lucide="file-text"></i><span>Logs</span><output data-count="log">0</output></a>
+                <a class="nav-item" href="/telego/traces"><i data-lucide="waypoints"></i><span>Traces</span><output data-count="trace">0</output></a>
+            </nav>
+            <div class="sidebar-footer"><span class="status-dot" id="connection-dot"></span><span id="connection-label">Connecting</span><strong data-count="all">0</strong></div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar detail-topbar">
+                <div class="detail-heading">
+                    <a class="icon-button" href="/telego/http-client" title="Back to HTTP Client" aria-label="Back to HTTP Client"><i data-lucide="arrow-left"></i></a>
+                    <div><p class="eyebrow">HTTP Client</p><h1>Request lab</h1></div>
+                </div>
+            </header>
+
+            <div class="request-lab">
+                <form class="request-composer" id="http-client-form">
+                    <div class="request-line">
+                        <label class="method-field"><span class="sr-only">Method</span><select id="request-method" aria-label="Method"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option></select></label>
+                        <label class="url-field"><span class="sr-only">URL</span><input id="request-url" type="url" value="https://jsonplaceholder.typicode.com/todos/1" placeholder="https://api.example.com/resource" required></label>
+                        <button class="command-button send-button" id="send-request" type="submit"><i data-lucide="send"></i><span>Send</span></button>
+                    </div>
+
+                    <div class="composer-tabs" role="tablist">
+                        <button class="is-active" data-panel="headers-panel" type="button">Headers</button>
+                        <button data-panel="body-panel" type="button">Body</button>
+                    </div>
+                    <div class="composer-panel" id="headers-panel"><label><span class="sr-only">Headers as JSON</span><textarea id="request-headers" spellcheck="false">{
+  "Accept": "application/json"
+}</textarea></label></div>
+                    <div class="composer-panel" id="body-panel" hidden><label><span class="sr-only">Request body</span><textarea id="request-body" spellcheck="false" placeholder="{&#10;  &quot;name&quot;: &quot;Goravel&quot;&#10;}"></textarea></label></div>
+                </form>
+
+                <section class="http-result" id="http-result" hidden>
+                    <header class="section-heading">
+                        <div><h2>Response</h2><span id="result-duration"></span></div>
+                        <div class="result-actions"><span class="status-badge" id="result-status"></span><a class="command-button command-button-quiet" id="open-entry" href="/telego/http-client" hidden><i data-lucide="activity"></i><span>Open trace</span></a></div>
+                    </header>
+                    <div class="section-tabs"><button class="is-active" data-result-panel="result-body-panel" type="button">Body</button><button data-result-panel="result-headers-panel" type="button">Headers</button></div>
+                    <div class="result-panel" id="result-body-panel"><pre><code id="result-body"></code></pre></div>
+                    <div class="result-panel" id="result-headers-panel" hidden><pre><code id="result-headers"></code></pre></div>
+                </section>
+
+                <div class="request-error" id="request-error" hidden></div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>{{ .entry.Name }} - Telego</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/telego/assets/telego.css">
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
+    <script src="/telego/assets/telego-detail.js" defer></script>
+</head>
+<body data-view="detail" data-entry-id="{{ .entry.ID }}" data-type="{{ .type }}" data-category="{{ .category }}">
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Entry types">
+            <a class="brand" href="/telego/requests"><span class="brand-mark"><i data-lucide="scan-search"></i></span><span>Telego</span></a>
+            <nav class="nav-list">
+                <a class="nav-item {{if eq .category "requests"}}is-active{{end}}" href="/telego/requests"><i data-lucide="arrow-left-right"></i><span>Requests</span><output data-count="request">0</output></a>
+                <a class="nav-item {{if eq .category "exceptions"}}is-active{{end}}" href="/telego/exceptions"><i data-lucide="circle-alert"></i><span>Exceptions</span><output data-count="exception">0</output></a>
+                <a class="nav-item {{if eq .category "queries"}}is-active{{end}}" href="/telego/queries"><i data-lucide="database"></i><span>Queries</span><output data-count="query">0</output></a>
+                <a class="nav-item {{if eq .category "http-client"}}is-active{{end}}" href="/telego/http-client"><i data-lucide="globe-2"></i><span>HTTP Client</span><output data-count="http">0</output></a>
+                <a class="nav-item {{if eq .category "cache"}}is-active{{end}}" href="/telego/cache"><i data-lucide="archive"></i><span>Cache</span><output data-count="cache">0</output></a>
+                <a class="nav-item {{if eq .category "events"}}is-active{{end}}" href="/telego/events"><i data-lucide="radio"></i><span>Events</span><output data-count="event">0</output></a>
+                <a class="nav-item {{if eq .category "logs"}}is-active{{end}}" href="/telego/logs"><i data-lucide="file-text"></i><span>Logs</span><output data-count="log">0</output></a>
+                <a class="nav-item {{if eq .category "traces"}}is-active{{end}}" href="/telego/traces"><i data-lucide="waypoints"></i><span>Traces</span><output data-count="trace">0</output></a>
+            </nav>
+            <div class="sidebar-footer"><span class="status-dot" id="connection-dot"></span><span id="connection-label">Connecting</span><strong data-count="all">0</strong></div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar detail-topbar">
+                <div class="detail-heading">
+                    <a class="icon-button" href="/telego/{{ .category }}" title="Back to {{ .title }}" aria-label="Back to {{ .title }}"><i data-lucide="arrow-left"></i></a>
+                    <div><p class="eyebrow">{{ .type }} details</p><h1 id="detail-title">{{ .entry.Name }}</h1></div>
+                </div>
+            </header>
+
+            <div class="detail-page">
+                <section class="detail-section detail-overview">
+                    <header class="section-heading"><h2>Overview</h2><span class="status-badge" id="detail-status">Loading</span></header>
+                    <dl class="metadata" id="detail-metadata"></dl>
+                </section>
+                <div id="detail-sections"></div>
+                <section class="detail-section" id="related-section" hidden>
+                    <header class="section-heading"><h2>Related activity</h2><span id="related-count">0 entries</span></header>
+                    <div class="related-list" id="related-list"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

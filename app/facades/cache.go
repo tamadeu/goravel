@@ -2,8 +2,10 @@ package facades
 
 import (
 	"github.com/goravel/framework/contracts/cache"
+
+	"goravel/app/telego"
 )
 
 func Cache() cache.Cache {
-	return App().MakeCache()
+	return telego.ObserveCache(App().MakeCache(), telego.DefaultStore())
 }

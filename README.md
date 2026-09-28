@@ -31,6 +31,24 @@ Example [https://github.com/goravel/example](https://github.com/goravel/example)
 > To optimize the documentation, please submit a PR to the documentation
 > repository [https://github.com/goravel/docs](https://github.com/goravel/docs)
 
+## Telego
+
+Telego is the built-in local observability dashboard at `/telego`. It captures
+incoming requests, exceptions, database queries, outgoing HTTP calls, logs,
+cache operations, and events. Set `TELOGO_ENABLED=true` to enable it; the
+default is enabled only when `APP_ENV=local`.
+
+Entries are kept in memory with a 1,000-entry retention limit and are cleared
+when the process restarts. Sensitive headers, credentials, tokens, and common
+secret fields are redacted before storage. Keep Telego disabled in production
+unless the route is protected by application authorization.
+
+Native OpenTelemetry spans provide request, query, and HTTP client entries.
+Pass the request context to `facades.Orm().WithContext`,
+`facades.Http().WithContext`, and `facades.Cache().WithContext` to correlate
+those operations under the same trace. Event dispatches can carry a
+`context.Context` in an event argument for the same correlation.
+
 ## Main Features
 
 | Module Name | Description |

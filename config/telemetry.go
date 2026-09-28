@@ -2,10 +2,18 @@ package config
 
 import (
 	"goravel/app/facades"
+	"goravel/app/telego"
 )
 
 func init() {
 	config := facades.Config()
+	telegoEnabled := config.EnvBool("TELOGO_ENABLED", config.EnvString("APP_ENV", "production") == "local")
+	defaultTraceExporter := ""
+	defaultLogExporter := ""
+	if telegoEnabled {
+		defaultTraceExporter = "telego"
+		defaultLogExporter = "telego_log"
+	}
 	config.Add("telemetry", map[string]any{
 		// Service Identification
 		//
@@ -55,7 +63,7 @@ func init() {
 			//
 			// The name of the exporter definition in the "exporters" section below.
 			// Set to "" to disable tracing.
-			"exporter": config.Env("OTEL_TRACES_EXPORTER"),
+			"exporter": config.Env("OTEL_TRACES_EXPORTER", defaultTraceExporter),
 
 			// Sampler Configuration
 			//
@@ -129,7 +137,7 @@ func init() {
 			//
 			// The name of the exporter definition in the "exporters" section below.
 			// Set to "" to disable OTel logging.
-			"exporter": config.Env("OTEL_LOGS_EXPORTER"),
+			"exporter": config.Env("OTEL_LOGS_EXPORTER", defaultLogExporter),
 
 			// Processor Configuration
 			//
@@ -161,7 +169,7 @@ func init() {
 				"excluded_paths":   []string{}, // e.g., ["/health", "/metrics"]
 				"excluded_methods": []string{}, // e.g., ["OPTIONS", "HEAD"]
 			},
-			
+
 			// HTTP Client Instrumentation
 			//
 			// Configures instrumentation for outgoing HTTP requests made through the
@@ -174,14 +182,14 @@ func init() {
 			"http_client": map[string]any{
 				"enabled": config.Env("OTEL_HTTP_CLIENT_ENABLED", true),
 			},
-			
+
 			// gRPC Server Instrumentation
 			//
 			// Configures the instrumentation for incoming gRPC requests to your server.
 			"grpc_server": map[string]any{
 				"enabled": config.Env("OTEL_GRPC_SERVER_ENABLED", true),
 			},
-			
+
 			// gRPC Client Instrumentation
 			//
 			// Configures the instrumentation for outgoing gRPC calls made by your application.
@@ -214,6 +222,14 @@ func init() {
 		//
 		// Supported drivers: "otlp", "console", "custom"
 		"exporters": map[string]any{
+			"telego": map[string]any{
+				"driver": "custom",
+				"via":    telego.NewSpanExporter(telego.DefaultStore()),
+			},
+			"telego_log": map[string]any{
+				"driver": "custom",
+				"via":    telego.NewLogExporter(telego.DefaultStore()),
+			},
 			// OTLP Trace Exporter
 			// Reference: https://opentelemetry.io/docs/specs/otel/protocol/
 			"otlptrace": map[string]any{

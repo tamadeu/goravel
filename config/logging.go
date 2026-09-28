@@ -6,6 +6,10 @@ import (
 
 func init() {
 	config := facades.Config()
+	stackChannels := []string{"daily"}
+	if config.EnvBool("TELOGO_ENABLED", config.EnvString("APP_ENV", "production") == "local") || config.EnvString("OTEL_LOGS_EXPORTER") != "" {
+		stackChannels = append(stackChannels, "otel")
+	}
 	config.Add("logging", map[string]any{
 		// Default Log Channel
 		//
@@ -23,7 +27,7 @@ func init() {
 		"channels": map[string]any{
 			"stack": map[string]any{
 				"driver":   "stack",
-				"channels": []string{"daily"},
+				"channels": stackChannels,
 			},
 			"single": map[string]any{
 				"driver":    "single",
@@ -42,7 +46,7 @@ func init() {
 			},
 			"otel": map[string]any{
 				"driver":          "otel",
-				"instrument_name": config.GetString("APP_NAME", "goravel/log"),
+				"instrument_name": config.GetString("app.name", "goravel") + "/log",
 			},
 		},
 	})
