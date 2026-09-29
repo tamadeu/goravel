@@ -9,5 +9,7 @@ import (
 func Migrations() []schema.Migration {
 	return []schema.Migration{
 		&migrations.M20210101000001CreateJobsTable{},
+		&migrations.M20260929224705CreateUsersTable{},
+		&migrations.M20260929230106CreateConnectorsTable{},
 	}
 }

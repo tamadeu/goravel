@@ -47,7 +47,12 @@ func (m *Telego) Handle(ctx http.Context) {
 }
 
 func responseBody(ctx http.Context) string {
-	body := ctx.Response().Origin().Body().Bytes()
+	bodyBuffer := ctx.Response().Origin().Body()
+	if bodyBuffer == nil {
+		return ""
+	}
+
+	body := bodyBuffer.Bytes()
 	if len(body) == 0 {
 		return ""
 	}
