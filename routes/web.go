@@ -15,6 +15,7 @@ func Web() {
 		})
 	})
 
+	facades.Route().Static("dashboard", "./public/dashboard")
 	facades.Route().Static("public", "./public")
 
 	userController := controllers.NewUserController()
