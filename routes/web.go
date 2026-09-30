@@ -34,6 +34,9 @@ func Web() {
 	connectorController := controllers.NewConnectorController()
 	facades.Route().Middleware(&middleware.Authenticate{}).Get("/api/connectors", connectorController.Index)
 	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/connectors", connectorController.Store)
+	facades.Route().Middleware(&middleware.Authenticate{}).Put("/api/connectors/{id}", connectorController.Update)
+	facades.Route().Middleware(&middleware.Authenticate{}).Delete("/api/connectors/{id}", connectorController.Destroy)
+	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/connectors/{id}/test", connectorController.Test)
 
 	userController := controllers.NewUserController()
 	facades.Route().Get("/users", userController.Index)
