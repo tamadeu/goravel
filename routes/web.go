@@ -2,7 +2,6 @@ package routes
 
 import (
 	"github.com/goravel/framework/contracts/http"
-	"github.com/goravel/framework/support"
 
 	"goravel/app/facades"
 	"goravel/app/http/controllers"
@@ -10,18 +9,14 @@ import (
 )
 
 func Web() {
-	facades.Route().Get("/", func(ctx http.Context) http.Response {
-		return ctx.Response().View().Make("welcome.tmpl", map[string]any{
-			"version": support.Version,
-		})
-	})
-
 	dashboard := func(ctx http.Context) http.Response {
 		return ctx.Response().File("./public/dashboard/index.html")
 	}
-	facades.Route().Get("/dashboard", dashboard)
-	facades.Route().Get("/dashboard/", dashboard)
-	facades.Route().Get("/dashboard/connectors", dashboard)
+	facades.Route().Get("/", dashboard)
+	facades.Route().Get("/login", dashboard)
+	facades.Route().Get("/connectors", dashboard)
+	facades.Route().Get("/destinations", dashboard)
+	facades.Route().Get("/pipelines", dashboard)
 	facades.Route().Static("dashboard/assets", "./public/dashboard/assets")
 	facades.Route().Static("public", "./public")
 
@@ -37,6 +32,21 @@ func Web() {
 	facades.Route().Middleware(&middleware.Authenticate{}).Put("/api/connectors/{id}", connectorController.Update)
 	facades.Route().Middleware(&middleware.Authenticate{}).Delete("/api/connectors/{id}", connectorController.Destroy)
 	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/connectors/{id}/test", connectorController.Test)
+	facades.Route().Middleware(&middleware.Authenticate{}).Get("/api/connectors/{id}/tables", connectorController.Tables)
+	facades.Route().Middleware(&middleware.Authenticate{}).Get("/api/connectors/{id}/columns", connectorController.Columns)
+
+	destinationController := controllers.NewDestinationController()
+	facades.Route().Middleware(&middleware.Authenticate{}).Get("/api/destinations", destinationController.Index)
+	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/destinations", destinationController.Store)
+	facades.Route().Middleware(&middleware.Authenticate{}).Put("/api/destinations/{id}", destinationController.Update)
+	facades.Route().Middleware(&middleware.Authenticate{}).Delete("/api/destinations/{id}", destinationController.Destroy)
+	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/destinations/{id}/test", destinationController.Test)
+
+	pipelineController := controllers.NewPipelineController()
+	facades.Route().Middleware(&middleware.Authenticate{}).Get("/api/pipelines", pipelineController.Index)
+	facades.Route().Middleware(&middleware.Authenticate{}).Post("/api/pipelines", pipelineController.Store)
+	facades.Route().Middleware(&middleware.Authenticate{}).Put("/api/pipelines/{id}", pipelineController.Update)
+	facades.Route().Middleware(&middleware.Authenticate{}).Delete("/api/pipelines/{id}", pipelineController.Destroy)
 
 	userController := controllers.NewUserController()
 	facades.Route().Get("/users", userController.Index)

@@ -61,7 +61,7 @@ export function AuthPage({ onAuthenticated }: { onAuthenticated: (user: AuthUser
     <main className="grid min-h-screen bg-[#f7f7f5] lg:grid-cols-[minmax(360px,0.8fr)_minmax(520px,1.2fr)]">
       <section className="relative hidden overflow-hidden border-r border-[#264e42] bg-[#174f40] p-10 text-white lg:flex lg:flex-col">
         <div className="absolute inset-0 opacity-15 [background-image:radial-gradient(#fff_0.7px,transparent_0.7px)] [background-size:18px_18px]" />
-        <a href="/dashboard/" className="relative flex items-center gap-2.5 text-lg font-bold"><span className="grid size-9 place-items-center rounded-md bg-white text-[#174f40]"><Command className="size-5" /></span>Goravel Data</a>
+        <a href="/" className="relative flex items-center gap-2.5 text-lg font-bold"><span className="grid size-9 place-items-center rounded-md bg-white text-[#174f40]"><Command className="size-5" /></span>Goravel Data</a>
         <div className="relative my-auto max-w-md">
           <p className="mb-4 text-xs font-bold uppercase text-emerald-200">Data integration workspace</p>
           <h1 className="text-4xl font-bold leading-tight">Seus dados, conectados em um só fluxo.</h1>

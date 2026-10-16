@@ -1,7 +1,9 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
+	"net"
 	stdhttp "net/http"
 	"strconv"
 	"strings"
@@ -56,10 +58,16 @@ type connectorConfigurationResponse struct {
 	HasSSLClientCertificate bool   `json:"hasSSLClientCertificate"`
 }
 
-type ConnectorController struct{}
+type ConnectorController struct {
+	purpose string
+}
 
 func NewConnectorController() *ConnectorController {
-	return &ConnectorController{}
+	return &ConnectorController{purpose: "source"}
+}
+
+func NewDestinationController() *ConnectorController {
+	return &ConnectorController{purpose: "destination"}
 }
 
 func (r *ConnectorController) Index(ctx http.Context) http.Response {
@@ -69,7 +77,7 @@ func (r *ConnectorController) Index(ctx http.Context) http.Response {
 	}
 
 	var connectors []models.Connector
-	if err := facades.Orm().Query().Where("user_id", user.ID).OrderByDesc("id").Find(&connectors); err != nil {
+	if err := facades.Orm().Query().Where("user_id", user.ID).Where("purpose", r.purpose).OrderByDesc("id").Find(&connectors); err != nil {
 		return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível carregar os conectores"})
 	}
 
@@ -92,24 +100,7 @@ func (r *ConnectorController) Store(ctx http.Context) http.Response {
 		return ctx.Response().Json(stdhttp.StatusBadRequest, http.Json{"message": "Dados do conector inválidos"})
 	}
 
-	input.Name = strings.TrimSpace(input.Name)
-	input.Kind = strings.ToLower(strings.TrimSpace(input.Kind))
-	input.Host = strings.TrimSpace(input.Host)
-	input.Database = strings.TrimSpace(input.Database)
-	input.Username = strings.TrimSpace(input.Username)
-	input.Schema = strings.TrimSpace(input.Schema)
-	input.SSLMode = strings.ToLower(strings.TrimSpace(input.SSLMode))
-	if input.Kind == "postgresql" {
-		if input.Schema == "" {
-			input.Schema = "public"
-		}
-		if input.SSLMode == "" {
-			input.SSLMode = "prefer"
-		}
-		if input.ConnectTimeout == 0 {
-			input.ConnectTimeout = 10
-		}
-	}
+	normalizeConnectorInput(&input)
 	if message := validateConnector(input); message != "" {
 		return ctx.Response().Json(stdhttp.StatusUnprocessableEntity, http.Json{"message": message})
 	}
@@ -133,6 +124,7 @@ func (r *ConnectorController) Store(ctx http.Context) http.Response {
 
 	connector := models.Connector{
 		UserID:               user.ID,
+		Purpose:              r.purpose,
 		Name:                 input.Name,
 		Kind:                 input.Kind,
 		Status:               "configured",
@@ -161,7 +153,7 @@ func (r *ConnectorController) Update(ctx http.Context) http.Response {
 		return response
 	}
 
-	connector, response := ownedConnector(ctx, user.ID)
+	connector, response := r.ownedConnector(ctx, user.ID)
 	if response != nil {
 		return response
 	}
@@ -225,9 +217,16 @@ func (r *ConnectorController) Destroy(ctx http.Context) http.Response {
 		return response
 	}
 
-	connector, response := ownedConnector(ctx, user.ID)
+	connector, response := r.ownedConnector(ctx, user.ID)
 	if response != nil {
 		return response
+	}
+	count, err := facades.Orm().Query().Model(&models.Pipeline{}).Where("source_id = ? OR destination_id = ?", connector.ID, connector.ID).Count()
+	if err != nil {
+		return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível verificar os pipelines vinculados"})
+	}
+	if count > 0 {
+		return ctx.Response().Json(stdhttp.StatusConflict, http.Json{"message": "Esta conexão está vinculada a um pipeline. Altere ou exclua o pipeline antes de remover a conexão."})
 	}
 	if _, err := facades.Orm().Query().Delete(&connector); err != nil {
 		return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível excluir o conector"})
@@ -242,24 +241,29 @@ func (r *ConnectorController) Test(ctx http.Context) http.Response {
 		return response
 	}
 
-	connectorID, err := strconv.ParseUint(ctx.Request().Route("id"), 10, 64)
-	if err != nil {
-		return ctx.Response().Json(stdhttp.StatusBadRequest, http.Json{"message": "Conector inválido"})
+	connector, response := r.ownedConnector(ctx, user.ID)
+	if response != nil {
+		return response
 	}
-
-	var connector models.Connector
-	if err := facades.Orm().Query().Where("id", connectorID).Where("user_id", user.ID).First(&connector); err != nil {
-		return ctx.Response().Json(stdhttp.StatusNotFound, http.Json{"message": "Conector não encontrado"})
-	}
-	if connector.Kind != "postgresql" {
+	if connector.Kind != "postgresql" && connector.Kind != "clickhouse" {
 		return ctx.Response().Json(stdhttp.StatusUnprocessableEntity, http.Json{"message": "Teste ainda não disponível para este tipo de conector"})
 	}
 
-	configuration, err := decryptPostgreSQLConfiguration(connector)
-	if err != nil {
-		return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível ler as credenciais do conector"})
+	var result any
+	var err error
+	if connector.Kind == "clickhouse" {
+		configuration, decryptErr := decryptClickHouseConfiguration(connector)
+		if decryptErr != nil {
+			return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível ler as credenciais do conector"})
+		}
+		result, err = services.TestClickHouseConnection(ctx.Context(), configuration)
+	} else {
+		configuration, decryptErr := decryptPostgreSQLConfiguration(connector)
+		if decryptErr != nil {
+			return ctx.Response().Json(stdhttp.StatusInternalServerError, http.Json{"message": "Não foi possível ler as credenciais do conector"})
+		}
+		result, err = services.TestPostgreSQLConnection(ctx.Context(), configuration)
 	}
-	result, err := services.TestPostgreSQLConnection(ctx.Context(), configuration)
 	if err != nil {
 		connector.Status = "attention"
 		_ = facades.Orm().Query().Save(&connector)
@@ -279,14 +283,14 @@ func (r *ConnectorController) Test(ctx http.Context) http.Response {
 	}})
 }
 
-func ownedConnector(ctx http.Context, userID uint) (models.Connector, http.Response) {
+func (r *ConnectorController) ownedConnector(ctx http.Context, userID uint) (models.Connector, http.Response) {
 	connectorID, err := strconv.ParseUint(ctx.Request().Route("id"), 10, 64)
 	if err != nil {
 		return models.Connector{}, ctx.Response().Json(stdhttp.StatusBadRequest, http.Json{"message": "Conector inválido"})
 	}
 
 	var connector models.Connector
-	if err := facades.Orm().Query().Where("id", connectorID).Where("user_id", userID).FindOrFail(&connector); err != nil {
+	if err := facades.Orm().Query().Where("id", connectorID).Where("user_id", userID).Where("purpose", r.purpose).FindOrFail(&connector); err != nil {
 		return connector, ctx.Response().Json(stdhttp.StatusNotFound, http.Json{"message": "Conector não encontrado"})
 	}
 
@@ -312,6 +316,25 @@ func normalizeConnectorInput(input *connectorRequest) {
 			input.ConnectTimeout = 10
 		}
 	}
+	if input.Kind == "clickhouse" {
+		input.Schema = ""
+		if input.SSLMode == "" {
+			input.SSLMode = "disable"
+		}
+		if input.Port == nil {
+			port := 8123
+			if input.SSLMode == "verify-full" {
+				port = 8443
+			}
+			input.Port = &port
+		}
+		if input.Username == "" {
+			input.Username = "default"
+		}
+		if input.ConnectTimeout == 0 {
+			input.ConnectTimeout = 10
+		}
+	}
 }
 
 func authenticatedUser(ctx http.Context) (models.User, http.Response) {
@@ -324,7 +347,7 @@ func authenticatedUser(ctx http.Context) (models.User, http.Response) {
 }
 
 func validateConnector(input connectorRequest) string {
-	validKinds := map[string]bool{"bigquery": true, "mysql": true, "postgresql": true, "sqlserver": true, "s3": true, "rest": true}
+	validKinds := map[string]bool{"bigquery": true, "mysql": true, "postgresql": true, "clickhouse": true, "sqlserver": true, "s3": true, "rest": true}
 	if len(input.Name) < 2 {
 		return "Informe um nome para o conector"
 	}
@@ -340,10 +363,16 @@ func validateConnector(input connectorRequest) string {
 	if input.Kind != "rest" && input.Database == "" {
 		return "Informe o banco, dataset ou bucket"
 	}
-	if input.Kind == "postgresql" {
+	if input.Kind == "postgresql" || input.Kind == "clickhouse" {
 		validSSLModes := map[string]bool{"disable": true, "allow": true, "prefer": true, "require": true, "verify-ca": true, "verify-full": true}
+		if input.Kind == "clickhouse" {
+			validSSLModes = map[string]bool{"disable": true, "verify-full": true}
+			if strings.ContainsAny(input.Host, "/?#@") || (strings.Contains(input.Host, ":") && net.ParseIP(input.Host) == nil) {
+				return "Informe apenas o hostname ou IP, sem protocolo, porta ou caminho"
+			}
+		}
 		if input.Username == "" {
-			return "Informe o usuário PostgreSQL"
+			return "Informe o usuário do banco de dados"
 		}
 		if !validSSLModes[input.SSLMode] {
 			return "Modo SSL inválido"
@@ -439,4 +468,106 @@ func decryptPostgreSQLConfiguration(connector models.Connector) (services.Postgr
 		Host: connector.Host, Port: port, Database: connector.DatabaseName, Username: connector.Username, Password: password,
 		Schema: connector.SchemaName, SSLMode: connector.SSLMode, SSLRootCert: rootCert, SSLCertificate: certificate, SSLKey: key, ConnectTimeout: connector.ConnectTimeout,
 	}, nil
+}
+
+func decryptClickHouseConfiguration(connector models.Connector) (services.ClickHouseConfig, error) {
+	configuration := services.ClickHouseConfig{
+		Host: connector.Host, Database: connector.DatabaseName, Username: connector.Username,
+		SSLMode: connector.SSLMode, ConnectTimeout: connector.ConnectTimeout, Port: 8123,
+	}
+	if connector.SSLMode == "verify-full" {
+		configuration.Port = 8443
+	}
+	if connector.Port != nil {
+		configuration.Port = *connector.Port
+	}
+	for _, secret := range []struct {
+		encrypted string
+		target    *string
+	}{
+		{connector.PasswordEncrypted, &configuration.Password},
+		{connector.SSLRootCertEncrypted, &configuration.SSLRootCert},
+		{connector.SSLCertEncrypted, &configuration.SSLCertificate},
+		{connector.SSLKeyEncrypted, &configuration.SSLKey},
+	} {
+		value, err := decryptConnectorSecret(secret.encrypted)
+		if err != nil {
+			return services.ClickHouseConfig{}, err
+		}
+		*secret.target = value
+	}
+	return configuration, nil
+}
+
+func (r *ConnectorController) Tables(ctx http.Context) http.Response {
+	user, response := authenticatedUser(ctx)
+	if response != nil {
+		return response
+	}
+	connector, response := r.ownedConnector(ctx, user.ID)
+	if response != nil {
+		return response
+	}
+	tables, err := loadSourceTables(ctx.Context(), connector)
+	if err != nil {
+		return ctx.Response().Json(stdhttp.StatusUnprocessableEntity, http.Json{"message": err.Error()})
+	}
+	return ctx.Response().Success().Json(http.Json{"data": tables})
+}
+
+func (r *ConnectorController) Columns(ctx http.Context) http.Response {
+	user, response := authenticatedUser(ctx)
+	if response != nil {
+		return response
+	}
+	connector, response := r.ownedConnector(ctx, user.ID)
+	if response != nil {
+		return response
+	}
+	columns, err := loadSourceColumns(ctx.Context(), connector, ctx.Request().Query("schema"), ctx.Request().Query("table"))
+	if err != nil {
+		return ctx.Response().Json(stdhttp.StatusUnprocessableEntity, http.Json{"message": err.Error()})
+	}
+	return ctx.Response().Success().Json(http.Json{"data": columns})
+}
+
+func loadSourceTables(ctx context.Context, connector models.Connector) ([]services.SourceTable, error) {
+	switch connector.Kind {
+	case "postgresql":
+		configuration, err := decryptPostgreSQLConfiguration(connector)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível ler as credenciais da origem")
+		}
+		return services.ListPostgreSQLTables(ctx, configuration)
+	case "clickhouse":
+		configuration, err := decryptClickHouseConfiguration(connector)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível ler as credenciais da origem")
+		}
+		return services.ListClickHouseTables(ctx, configuration)
+	default:
+		return nil, fmt.Errorf("a descoberta de tabelas está disponível para PostgreSQL e ClickHouse")
+	}
+}
+
+func loadSourceColumns(ctx context.Context, connector models.Connector, schema, table string) ([]services.SourceColumn, error) {
+	if len(schema) > 255 || len(table) > 255 || schema == "" || table == "" {
+		return nil, fmt.Errorf("selecione uma tabela válida da origem")
+	}
+	switch connector.Kind {
+	case "postgresql":
+		configuration, err := decryptPostgreSQLConfiguration(connector)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível ler as credenciais da origem")
+		}
+		return services.ListPostgreSQLColumns(ctx, configuration, schema, table)
+	case "clickhouse":
+		configuration, err := decryptClickHouseConfiguration(connector)
+		if err != nil {
+			return nil, fmt.Errorf("não foi possível ler as credenciais da origem")
+		}
+		return services.ListClickHouseColumns(ctx, configuration, schema, table)
+	default:
+		return nil, fmt.Errorf("a descoberta de colunas está disponível para PostgreSQL e ClickHouse")
+	}
 }

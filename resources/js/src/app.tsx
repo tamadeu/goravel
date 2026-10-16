@@ -8,6 +8,7 @@ import {
   Command,
   CreditCard,
   Download,
+  DatabaseZap,
   LayoutDashboard,
   Menu,
   MoreHorizontal,
@@ -31,19 +32,25 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { AuthPage, type AuthUser, authTokenKey } from "@/auth-page"
 import { ConnectorsPage } from "@/connectors-page"
+import { DestinationsPage } from "@/destinations-page"
+import { PipelinesPage } from "@/pipelines-page"
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { label: "Visão geral", icon: LayoutDashboard, page: "overview" as const, path: "/dashboard/" },
-  { label: "Conectores", icon: Plug, page: "connectors" as const, path: "/dashboard/connectors" },
-  { label: "Pipelines", icon: Workflow },
+  { label: "Visão geral", icon: LayoutDashboard, page: "overview" as const, path: "/" },
+  { label: "Conectores", icon: Plug, page: "connectors" as const, path: "/connectors" },
+  { label: "Destinos", icon: DatabaseZap, page: "destinations" as const, path: "/destinations" },
+  { label: "Pipelines", icon: Workflow, page: "pipelines" as const, path: "/pipelines" },
   { label: "Execuções", icon: Activity, count: 3 },
 ]
 
-type Page = "overview" | "connectors"
+type Page = "overview" | "connectors" | "destinations" | "pipelines"
 
 function pageFromPath(): Page {
-  return window.location.pathname === "/dashboard/connectors" ? "connectors" : "overview"
+  if (window.location.pathname === "/connectors") return "connectors"
+  if (window.location.pathname === "/destinations") return "destinations"
+  if (window.location.pathname === "/pipelines") return "pipelines"
+  return "overview"
 }
 
 const chartData = [
@@ -82,7 +89,7 @@ function Sidebar({ open, currentPage, user, onClose, onNavigate }: { open: boole
       <button className={cn("fixed inset-0 z-30 bg-black/30 transition-opacity lg:hidden", open ? "opacity-100" : "pointer-events-none opacity-0")} onClick={onClose} aria-label="Fechar menu" />
       <aside className="dashboard-sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform" data-open={open}>
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-5">
-          <a href="/dashboard/" onClick={(event) => { event.preventDefault(); onNavigate("overview"); onClose() }} className="flex items-center gap-2.5 font-bold"><span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground"><Command className="size-4" /></span><span>Goravel</span></a>
+          <a href="/" onClick={(event) => { event.preventDefault(); onNavigate("overview"); onClose() }} className="flex items-center gap-2.5 font-bold"><span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground"><Command className="size-4" /></span><span>Goravel</span></a>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose} aria-label="Fechar menu"><X /></Button>
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-5">
@@ -148,13 +155,21 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    const handlePopState = () => setCurrentPage(pageFromPath())
+    const handlePopState = () => {
+      if (authState === "guest" && window.location.pathname !== "/login") {
+        window.history.replaceState({}, "", "/login")
+      } else if (authState === "authenticated" && window.location.pathname === "/login") {
+        window.history.replaceState({}, "", "/")
+      }
+      setCurrentPage(pageFromPath())
+    }
+    handlePopState()
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
-  }, [])
+  }, [authState])
 
   function navigate(page: Page) {
-    const path = page === "connectors" ? "/dashboard/connectors" : "/dashboard/"
+    const path = page === "overview" ? "/" : `/${page}`
     if (window.location.pathname !== path) window.history.pushState({}, "", path)
     setCurrentPage(page)
   }
@@ -194,7 +209,7 @@ export function App() {
           </header>
 
           <main className="mx-auto max-w-[1500px] p-4 md:p-7">
-            {currentPage === "connectors" ? <ConnectorsPage /> : <>
+            {currentPage === "connectors" ? <ConnectorsPage /> : currentPage === "destinations" ? <DestinationsPage /> : currentPage === "pipelines" ? <PipelinesPage /> : <>
             <section className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
               <div><p className="mb-1 text-sm font-medium text-primary">Terça-feira, 29 de setembro</p><h1 className="text-2xl font-bold sm:text-[28px]">Visão geral</h1><p className="mt-1 text-sm text-muted-foreground">Acompanhe o desempenho da sua operação.</p></div>
               <div className="flex items-center gap-2"><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline">Últimos 30 dias<ChevronDown /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem>Últimos 7 dias</DropdownMenuItem><DropdownMenuItem>Últimos 30 dias</DropdownMenuItem><DropdownMenuItem>Este ano</DropdownMenuItem></DropdownMenuContent></DropdownMenu><Button><Download />Exportar</Button></div>

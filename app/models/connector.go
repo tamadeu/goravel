@@ -9,6 +9,7 @@ import (
 type Connector struct {
 	orm.Model
 	UserID               uint       `json:"-"`
+	Purpose              string     `json:"-"`
 	Name                 string     `json:"name"`
 	Kind                 string     `json:"kind"`
 	Status               string     `json:"status"`
